@@ -39,7 +39,7 @@ Pushes to `main` that change files in `overlays/` automatically deploy the affec
 | Secret | Scope | Description |
 |---|---|---|
 | `CLOUDFLARE_API_TOKEN` | Repository | Cloudflare **Account API Token** for deploying Workers |
-| `CF_ACCESS_API_TOKEN` | Repository | Cloudflare Access API token for sync-access pre-deploy check |
+| `CF_ACCESS_API_TOKEN` | Repository (optional) | Cloudflare Access API token for pre-deploy Access sync |
 | `SOPS_AGE_KEY` | Per-environment | AGE private key for decrypting `secrets.json` |
 
 **Creating the Cloudflare API Token:**
