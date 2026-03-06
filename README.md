@@ -1,9 +1,9 @@
 # create-moltbot-env
 
-Scaffold a GitOps environment repository for deploying [moltbot-app](https://github.com/aehrt55/moltbot-app) on Cloudflare Workers.
+Scaffold a GitOps environment repository for deploying [moltbot-app](https://github.com/marxbiotech/moltbot-app) on Cloudflare Workers.
 
 ```bash
-npx @aehrt55/create-moltbot-env
+npx @marxbiotech/create-moltbot-env
 ```
 
 ## What It Does
@@ -28,7 +28,7 @@ npm install -g wrangler
 ## Usage
 
 ```bash
-npx @aehrt55/create-moltbot-env
+npx @marxbiotech/create-moltbot-env
 ```
 
 The CLI walks you through these prompts:
@@ -40,7 +40,7 @@ The CLI walks you through these prompts:
 | Workers subdomain | `myteam` | Your `*.myteam.workers.dev` subdomain |
 | CF Access team domain | `myteam.cloudflareaccess.com` | Auto-derived from subdomain |
 | Access policy email | `you@example.com` | Email for initial Access allow-list |
-| App repo git URL | `git@github.com:aehrt55/moltbot-app.git` | Default provided |
+| App repo git URL | `git@github.com:marxbiotech/moltbot-app.git` | Default provided |
 | Generate AGE key pair? | `Y` | Creates manager key for secret encryption |
 
 On completion, the CLI:
@@ -193,7 +193,7 @@ When a new version of this CLI is released with template changes, upgrade your e
 
 ```bash
 # Check for available migrations
-npx @aehrt55/create-moltbot-env diff
+npx @marxbiotech/create-moltbot-env diff
 
 # Or use Claude Code
 /upgrade

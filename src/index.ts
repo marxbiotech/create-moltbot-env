@@ -103,11 +103,11 @@ async function main() {
         type: "text",
         name: "appRepo",
         message: "App repo (owner/repo slug)",
-        initial: "aehrt55/moltbot-app",
+        initial: "marxbiotech/moltbot-app",
         validate: (v: string) =>
           /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(v)
             ? true
-            : 'Must be owner/repo format (e.g. "aehrt55/moltbot-app")',
+            : 'Must be owner/repo format (e.g. "marxbiotech/moltbot-app")',
       },
       {
         type: "text",
@@ -120,7 +120,7 @@ async function main() {
         validate: (v: string) =>
           /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(v)
             ? true
-            : 'Must be owner/repo format (e.g. "aehrt55/moltbot-env")',
+            : 'Must be owner/repo format (e.g. "myorg/moltbot-env")',
       },
       {
         type: "confirm",
@@ -227,7 +227,7 @@ async function main() {
   try {
     execFileSync("git", ["init"], { cwd: targetDir, stdio: "pipe" });
     execFileSync("git", ["add", "-A"], { cwd: targetDir, stdio: "pipe" });
-    execFileSync("git", ["commit", "-m", "Initial scaffold from @aehrt55/create-moltbot-env"], {
+    execFileSync("git", ["commit", "-m", "Initial scaffold from @marxbiotech/create-moltbot-env"], {
       cwd: targetDir,
       stdio: "pipe",
     });

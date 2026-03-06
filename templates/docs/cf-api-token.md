@@ -12,7 +12,7 @@
 4. 設定：
    - **Token name:** `moltbot-env-setup`（或任意名稱）
    - **Permissions:** Account > Access: Apps and Policies > **Edit**
-   - **Account Resources:** Include > Aehrt55@aehrt55.net's Account
+   - **Account Resources:** Include > （選擇你的帳戶）
 5. 點擊 **Continue to summary** > **Create Token**
 6. 複製 token
 

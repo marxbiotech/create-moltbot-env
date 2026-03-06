@@ -3,7 +3,7 @@
 Run the diff command to check for available migrations:
 
 ```bash
-npx @aehrt55/create-moltbot-env diff
+npx @marxbiotech/create-moltbot-env diff
 ```
 
 If migrations are available, apply each instruction in order:

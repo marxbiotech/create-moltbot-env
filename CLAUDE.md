@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`@aehrt55/create-moltbot-env` is a scaffold CLI (`npx @aehrt55/create-moltbot-env`) that generates a moltbot-env GitOps repository for deploying [moltbot-app](https://github.com/aehrt55/moltbot-app) on Cloudflare Workers. It also provides an agent-native upgrade mechanism via the `diff` subcommand.
+`@marxbiotech/create-moltbot-env` is a scaffold CLI (`npx @marxbiotech/create-moltbot-env`) that generates a moltbot-env GitOps repository for deploying [moltbot-app](https://github.com/marxbiotech/moltbot-app) on Cloudflare Workers. It also provides an agent-native upgrade mechanism via the `diff` subcommand.
 
 ## Commands
 
@@ -19,8 +19,8 @@ npm publish --access public  # Publish to npm
 
 ### Two CLI modes
 
-1. **Scaffold** (`npx @aehrt55/create-moltbot-env`) — `src/index.ts`: interactive prompts → collect 6 template variables + AGE key → render EJS templates → copy static files → `chmod +x` shell scripts → `git init` + initial commit.
-2. **Diff** (`npx @aehrt55/create-moltbot-env diff`) — `src/diff.ts`: reads `.moltbot-env-meta.json` from CWD → compares version against CLI's `package.json` version → builds migration chain from `migrations/*.md` → outputs markdown instructions to stdout. Supports `--json` flag. Exit 0 = migrations found, exit 1 = up-to-date or no path.
+1. **Scaffold** (`npx @marxbiotech/create-moltbot-env`) — `src/index.ts`: interactive prompts → collect 6 template variables + AGE key → render EJS templates → copy static files → `chmod +x` shell scripts → `git init` + initial commit.
+2. **Diff** (`npx @marxbiotech/create-moltbot-env diff`) — `src/diff.ts`: reads `.moltbot-env-meta.json` from CWD → compares version against CLI's `package.json` version → builds migration chain from `migrations/*.md` → outputs markdown instructions to stdout. Supports `--json` flag. Exit 0 = migrations found, exit 1 = up-to-date or no path.
 
 ### Template rendering
 
@@ -41,7 +41,7 @@ interface TemplateVars {
 
 ### Agent-native migration system
 
-Instead of traditional diff/patch, migrations are markdown files with natural language instructions. The CLI is a pure data tool (computes what changed); Claude Code is the executor (applies changes semantically). The user runs `/upgrade` in their scaffolded repo, which calls `npx @aehrt55/create-moltbot-env diff` and applies each instruction.
+Instead of traditional diff/patch, migrations are markdown files with natural language instructions. The CLI is a pure data tool (computes what changed); Claude Code is the executor (applies changes semantically). The user runs `/upgrade` in their scaffolded repo, which calls `npx @marxbiotech/create-moltbot-env diff` and applies each instruction.
 
 Migration files in `migrations/` are named `<from>-to-<to>.md` (e.g. `0.1.0-to-0.2.0.md`). The diff command chains them: `0.1.0 → 0.2.0 → 0.3.0`.
 
