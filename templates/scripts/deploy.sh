@@ -115,6 +115,7 @@ npx wrangler deploy
 if [[ -f "$OVERLAY_DIR/secrets.json" ]]; then
   echo "▶ Deploying secrets..."
   secrets=$(mktemp)
+  trap 'rm -rf "$WORK_DIR" "$secrets"' EXIT
   sops decrypt "$OVERLAY_DIR/secrets.json" > "$secrets"
   npx wrangler secret bulk "$secrets"
   rm -f "$secrets"

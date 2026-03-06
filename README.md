@@ -40,7 +40,8 @@ The CLI walks you through these prompts:
 | Workers subdomain | `myteam` | Your `*.myteam.workers.dev` subdomain |
 | CF Access team domain | `myteam.cloudflareaccess.com` | Auto-derived from subdomain |
 | Access policy email | `you@example.com` | Email for initial Access allow-list |
-| App repo git URL | `git@github.com:marxbiotech/moltbot-app.git` | Default provided |
+| App repo slug | `marxbiotech/moltbot-app` | `owner/repo` format |
+| Env repo slug | `marxbiotech/moltbot-env` | Auto-derived from app repo owner |
 | Generate AGE key pair? | `Y` | Creates manager key for secret encryption |
 
 On completion, the CLI:
@@ -58,6 +59,7 @@ moltbot-env/
 ├── .claude/commands/
 │   ├── create-env.md                # Claude Code: guided environment creation
 │   ├── delete-env.md                # Claude Code: guided environment deletion
+│   ├── setup-env-age-key.md         # Claude Code: AGE key setup for CI/CD
 │   └── upgrade.md                   # Claude Code: agent-native upgrade
 ├── .github/workflows/
 │   └── deploy.yml                   # CI/CD: auto-deploy on overlay changes
@@ -203,7 +205,7 @@ npx @marxbiotech/create-moltbot-env diff
 /upgrade
 ```
 
-The `diff` subcommand reads `.moltbot-env-meta.json` in your repo, compares against the latest CLI version, and outputs migration instructions as markdown. Claude Code's `/upgrade` command runs this automatically and applies changes semantically.
+The `diff` subcommand reads `.moltbot-env.json` in your repo, compares against the latest CLI version, and outputs migration instructions as markdown. Claude Code's `/upgrade` command runs this automatically and applies changes semantically.
 
 ## License
 

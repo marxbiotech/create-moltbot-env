@@ -16,8 +16,10 @@ OVERLAY_DIR="$ROOT_DIR/overlays/$ENV_NAME"
 
 [[ -d "$OVERLAY_DIR" ]] || { echo "Error: overlay '$ENV_NAME' not found" >&2; exit 1; }
 
-# Prevent wrangler from picking up CF_API_TOKEN (e.g. CF Access token leaked into env)
-unset CF_API_TOKEN
+# Prevent wrangler from picking up CF_API_TOKEN if set in the environment
+if [[ -z "${CI:-}" ]]; then
+  unset CF_API_TOKEN
+fi
 
 STRIP="node $SCRIPT_DIR/jsonc-strip.js"
 OVERLAY_JSON=$($STRIP "$OVERLAY_DIR/wrangler.jsonc")
@@ -61,7 +63,8 @@ JSONEOF
     echo "  ✓ Injected queues config into wrangler.jsonc"
     echo "  ⚠ Modified $WRANGLER_FILE — commit this change to persist" >&2
   else
-    echo "  ⚠ Could not inject queues config (no key found in wrangler.jsonc)" >&2
+    echo "Error: could not inject queues config (no JSON key found in wrangler.jsonc)" >&2
+    exit 1
   fi
   rm -f "$BLOCK_FILE"
 
@@ -85,12 +88,11 @@ fi
 echo "▶ Ensuring queues for $ENV_NAME..."
 
 # Fetch existing queues via wrangler
-if ! EXISTING_RAW=$(npx wrangler queues list --json 2>&1); then
-  echo "Error: failed to list queues:" >&2
-  echo "$EXISTING_RAW" >&2
+if ! EXISTING_RAW=$(npx wrangler queues list --json 2>/dev/null); then
+  echo "Error: failed to list queues" >&2
   exit 1
 fi
-EXISTING=$(echo "$EXISTING_RAW" | jq -r '.[].queue_name')
+EXISTING=$(echo "$EXISTING_RAW" | jq -r '.[].queue_name') || { echo "Error: failed to parse queue list output" >&2; exit 1; }
 
 for QUEUE_NAME in $QUEUE_NAMES; do
   if echo "$EXISTING" | grep -qx "$QUEUE_NAME"; then

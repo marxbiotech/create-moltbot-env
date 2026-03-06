@@ -9,7 +9,7 @@ moltbot-env is a GitOps environment configuration repository for [moltbot-app](h
 ## Architecture
 
 **Overlay pattern with Make orchestration:**
-- `Makefile` — shared make targets (deploy, secret, wrangler, merged-config, edit-secrets, push-secrets); derives `ROOT` via `realpath` on the symlink
+- `Makefile` — shared make targets (deploy, secret, wrangler, merged-config, edit-secrets, push-secrets, sync-access, ensure-queue); derives `ROOT` via `realpath` on the symlink
 - `overlays/<env>/Makefile` — symlink to `../../Makefile`; `$(CURDIR)` resolves to the overlay directory so `ENV_NAME` is auto-derived
 - `overlays/<env>/wrangler.jsonc` — environment-specific Wrangler config overrides (JSONC format with comments)
 - `overlays/<env>/version.txt` — pinned moltbot-app commit SHA to deploy

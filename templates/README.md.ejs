@@ -25,6 +25,7 @@ make wrangler CMD='secret list'          # Run arbitrary wrangler command
 make wrangler CMD='tail'                 # Stream live logs
 make merged-config APP_DIR=/path/to/app  # Inspect final merged config
 make sync-access                         # Sync CF Access apps (requires CF_ACCESS_API_TOKEN)
+make ensure-queue                        # Ensure Cloudflare Queues exist for overlay config
 make edit-secrets                        # Edit secrets via SOPS (requires SOPS_AGE_KEY)
 make push-secrets                        # Decrypt and bulk-push secrets to Cloudflare
 ```
@@ -38,6 +39,7 @@ Pushes to `main` that change files in `overlays/` automatically deploy the affec
 | Secret | Scope | Description |
 |---|---|---|
 | `CLOUDFLARE_API_TOKEN` | Repository | Cloudflare **Account API Token** for deploying Workers |
+| `CF_ACCESS_API_TOKEN` | Repository | Cloudflare Access API token for sync-access pre-deploy check |
 | `SOPS_AGE_KEY` | Per-environment | AGE private key for decrypting `secrets.json` |
 
 **Creating the Cloudflare API Token:**

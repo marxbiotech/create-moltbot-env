@@ -19,7 +19,7 @@ npm publish --access public  # Publish to npm
 
 ### Two CLI modes
 
-1. **Scaffold** (`npx @marxbiotech/create-moltbot-env`) — `src/index.ts`: interactive prompts → collect 6 template variables + AGE key → render EJS templates → copy static files → `chmod +x` shell scripts → `git init` + initial commit.
+1. **Scaffold** (`npx @marxbiotech/create-moltbot-env`) — `src/index.ts`: interactive prompts → collect template variables + AGE key → render EJS templates → copy static files → `chmod +x` shell scripts → `git init` + initial commit.
 2. **Diff** (`npx @marxbiotech/create-moltbot-env diff`) — `src/diff.ts`: reads version metadata from `.moltbot-env.json` (or legacy `.moltbot-env-meta.json` for v0.1.x repos) → compares version against CLI's `package.json` version → builds migration chain from `migrations/*.md` → outputs markdown instructions to stdout. Supports `--json` flag. Exit 0 = migrations found, exit 1 = up-to-date or no path.
 
 ### Template rendering
@@ -81,6 +81,7 @@ moltbot-env/
 ├── .claude/commands/
 │   ├── create-env.md              # Claude Code command: create environment
 │   ├── delete-env.md              # Claude Code command: delete environment
+│   ├── setup-env-age-key.md       # Claude Code command: AGE key setup
 │   └── upgrade.md                 # Claude Code command: agent-native upgrade
 ├── .github/workflows/
 │   └── deploy.yml                 # CI/CD: auto-deploy on overlay changes
