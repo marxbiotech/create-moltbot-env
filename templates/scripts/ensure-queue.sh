@@ -59,6 +59,7 @@ JSONEOF
     tail -n +$FIRST_KEY_LINE "$WRANGLER_FILE" >> "$tmp"
     mv "$tmp" "$WRANGLER_FILE"
     echo "  ✓ Injected queues config into wrangler.jsonc"
+    echo "  ⚠ Modified $WRANGLER_FILE — commit this change to persist" >&2
   else
     echo "  ⚠ Could not inject queues config (no key found in wrangler.jsonc)" >&2
   fi
@@ -83,13 +84,13 @@ fi
 
 echo "▶ Ensuring queues for $ENV_NAME..."
 
-# Fetch existing queues via wrangler (table format: extract name column)
-if ! EXISTING_RAW=$(npx wrangler queues list 2>&1); then
+# Fetch existing queues via wrangler
+if ! EXISTING_RAW=$(npx wrangler queues list --json 2>&1); then
   echo "Error: failed to list queues:" >&2
   echo "$EXISTING_RAW" >&2
   exit 1
 fi
-EXISTING=$(echo "$EXISTING_RAW" | awk -F '│' 'NR>3 && NF>2 {gsub(/^ +| +$/, "", $3); if ($3 != "" && $3 !~ /^-/) print $3}')
+EXISTING=$(echo "$EXISTING_RAW" | jq -r '.[].queue_name')
 
 for QUEUE_NAME in $QUEUE_NAMES; do
   if echo "$EXISTING" | grep -qx "$QUEUE_NAME"; then

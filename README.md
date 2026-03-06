@@ -52,23 +52,27 @@ On completion, the CLI:
 
 ```
 moltbot-env/
-├── Makefile                         # Shared make targets
+├── .moltbot-env.json                # Runtime config (account IDs, repo slugs, credentials, version)
 ├── .sops.yaml                       # SOPS encryption rules (empty initially)
-├── .moltbot-env-meta.json           # Version tracking for upgrades
-├── overlays/                        # Per-environment directories (created via create-env.sh)
+├── Makefile                         # Shared make targets
+├── .claude/commands/
+│   ├── create-env.md                # Claude Code: guided environment creation
+│   ├── delete-env.md                # Claude Code: guided environment deletion
+│   └── upgrade.md                   # Claude Code: agent-native upgrade
+├── .github/workflows/
+│   └── deploy.yml                   # CI/CD: auto-deploy on overlay changes
 ├── scripts/
+│   ├── deploy.sh                    # Clone app → merge config → wrangler deploy
 │   ├── create-env.sh                # Create: R2 bucket + CF Access + overlay
 │   ├── delete-env.sh                # Delete: reverse of create-env
-│   ├── deploy.sh                    # Clone app → merge config → wrangler deploy
+│   ├── ensure-queue.sh              # Ensure Cloudflare Queues exist
+│   ├── setup-env-age-key.sh         # Generate/regenerate AGE key pair
 │   ├── sync-access.sh               # Reconcile CF Access webhook bypass apps
 │   └── jsonc-strip.js               # JSONC → JSON converter
 ├── docs/
 │   ├── cf-api-token.md              # How to create CF Access API token
 │   └── sops-age.md                  # SOPS + AGE guide
-└── .claude/commands/
-    ├── create-env.md                # Claude Code: guided environment creation
-    ├── delete-env.md                # Claude Code: guided environment deletion
-    └── upgrade.md                   # Claude Code: agent-native upgrade
+└── overlays/                        # Per-environment directories (created via create-env.sh)
 ```
 
 ## Quick Start

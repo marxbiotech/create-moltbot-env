@@ -34,41 +34,42 @@ case "$APP_REPO" in
 esac
 
 # --- Credential loading (local only) ---
+if [[ -z "${CI:-}" ]]; then
+  load_credential() {
+    local key="$1"
+    local source=$(jq -r --arg k "$key" '.credentials[$k].source // empty' "$CONFIG")
+    [[ -n "$source" ]] || return 0
+    if [[ "$source" == "keychain" ]]; then
+      if ! command -v security &>/dev/null; then
+        echo "Warning: credential '$key' configured for keychain but 'security' not found" >&2
+        return 0
+      fi
+      local account=$(jq -r --arg k "$key" '.credentials[$k].keychainAccount // empty' "$CONFIG")
+      local service=$(jq -r --arg k "$key" '.credentials[$k].keychainService // empty' "$CONFIG")
+      if [[ -z "$account" || -z "$service" ]]; then
+        echo "Warning: credential '$key' missing keychainAccount or keychainService" >&2
+        return 0
+      fi
+      security find-generic-password -a "$account" -s "$service" -w 2>/dev/null || {
+        echo "Warning: failed to load '$key' from keychain" >&2
+        return 0
+      }
+    else
+      echo "Warning: unknown credential source '$source' for '$key'" >&2
+    fi
+  }
 
-load_credential() {
-  local key="$1"
-  local source=$(jq -r --arg k "$key" '.credentials[$k].source // empty' "$CONFIG")
-  [[ -n "$source" ]] || return 0
-  if [[ "$source" == "keychain" ]]; then
-    if ! command -v security &>/dev/null; then
-      echo "Warning: credential '$key' configured for keychain but 'security' not found" >&2
-      return 0
-    fi
-    local account=$(jq -r --arg k "$key" '.credentials[$k].keychainAccount // empty' "$CONFIG")
-    local service=$(jq -r --arg k "$key" '.credentials[$k].keychainService // empty' "$CONFIG")
-    if [[ -z "$account" || -z "$service" ]]; then
-      echo "Warning: credential '$key' missing keychainAccount or keychainService" >&2
-      return 0
-    fi
-    security find-generic-password -a "$account" -s "$service" -w 2>/dev/null || {
-      echo "Warning: failed to load '$key' from keychain" >&2
-      return 0
-    }
-  else
-    echo "Warning: unknown credential source '$source' for '$key'" >&2
+  # Load SOPS_AGE_KEY from keychain if not set
+  if [[ -z "${SOPS_AGE_KEY:-}" ]]; then
+    SOPS_AGE_KEY=$(load_credential sopsAgeKey)
+    export SOPS_AGE_KEY
   fi
-}
 
-# Load SOPS_AGE_KEY from keychain if not set
-if [[ -z "${SOPS_AGE_KEY:-}" ]]; then
-  SOPS_AGE_KEY=$(load_credential sopsAgeKey)
-  export SOPS_AGE_KEY
-fi
-
-# Load CF_ACCESS_API_TOKEN from keychain if not set (for sync-access pre-deploy check)
-if [[ -z "${CF_ACCESS_API_TOKEN:-}" ]]; then
-  CF_ACCESS_API_TOKEN=$(load_credential cfAccessApiToken)
-  export CF_ACCESS_API_TOKEN
+  # Load CF_ACCESS_API_TOKEN from keychain if not set (for sync-access pre-deploy check)
+  if [[ -z "${CF_ACCESS_API_TOKEN:-}" ]]; then
+    CF_ACCESS_API_TOKEN=$(load_credential cfAccessApiToken)
+    export CF_ACCESS_API_TOKEN
+  fi
 fi
 
 # Validate SOPS_AGE_KEY before deploying to prevent partial deploys (code without secrets)
@@ -114,7 +115,6 @@ npx wrangler deploy
 if [[ -f "$OVERLAY_DIR/secrets.json" ]]; then
   echo "▶ Deploying secrets..."
   secrets=$(mktemp)
-  trap 'rm -rf "$WORK_DIR" "$secrets"' EXIT
   sops decrypt "$OVERLAY_DIR/secrets.json" > "$secrets"
   npx wrangler secret bulk "$secrets"
   rm -f "$secrets"

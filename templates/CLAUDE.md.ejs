@@ -49,6 +49,7 @@ make wrangler CMD='secret list'          # Run arbitrary wrangler command
 make wrangler CMD='tail'                 # Stream live logs
 make merged-config APP_DIR=/path/to/app  # Inspect final merged config (needs local app repo)
 make sync-access                         # Sync CF Access apps (webhook bypass, requires CF_ACCESS_API_TOKEN)
+make ensure-queue                        # Ensure Cloudflare Queues exist for overlay config
 make edit-secrets                        # Edit secrets via SOPS (requires SOPS_AGE_KEY)
 make push-secrets                        # Decrypt and bulk-push secrets to Cloudflare
 ```
@@ -63,6 +64,7 @@ Edit `overlays/<env>/version.txt` with the target moltbot-app commit SHA, then d
 - `scripts/deploy.sh` — orchestrates clone, merge, deploy, and conditional secret push with `set -euo pipefail`
 - `scripts/create-env.sh` — bootstraps new environment (R2 bucket, CF Access app, overlay directory, AGE key pair)
 - `scripts/delete-env.sh` — tears down environment (Worker, container app, CF Access apps, R2 bucket, overlay, .sops.yaml rule)
+- `scripts/ensure-queue.sh` — ensures Cloudflare Queues exist for overlay config; idempotent, safe to run on every deploy
 - `scripts/sync-access.sh` — reconciles Cloudflare Access Applications: checks current state, creates/deletes webhook bypass app as needed
 - `scripts/setup-env-age-key.sh` — generates or regenerates AGE key pair for an environment, updates `.sops.yaml` and re-encrypts secrets
 
