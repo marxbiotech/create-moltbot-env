@@ -21,6 +21,11 @@ if [[ -z "${CI:-}" ]]; then
   unset CF_API_TOKEN
 fi
 
+CONFIG="$ROOT_DIR/.moltbot-env.json"
+[[ -f "$CONFIG" ]] || { echo "Error: .moltbot-env.json not found" >&2; exit 1; }
+CF_ACCOUNT_ID=$(jq -re '.cfAccountId // empty' "$CONFIG") || { echo "Error: cfAccountId missing from .moltbot-env.json" >&2; exit 1; }
+export CLOUDFLARE_ACCOUNT_ID="$CF_ACCOUNT_ID"
+
 STRIP="node $SCRIPT_DIR/jsonc-strip.js"
 OVERLAY_JSON=$($STRIP "$OVERLAY_DIR/wrangler.jsonc")
 WORKER_NAME=$(echo "$OVERLAY_JSON" | jq -r '.name // empty')
@@ -93,27 +98,22 @@ fi
 
 echo "▶ Ensuring queues for $ENV_NAME..."
 
-# Fetch existing queues via wrangler (stderr captured separately to preserve diagnostics)
-WRANGLER_STDERR=$(mktemp)
-if ! EXISTING_RAW=$(npx wrangler queues list --json 2>"$WRANGLER_STDERR"); then
-  echo "Error: failed to list queues: $(cat "$WRANGLER_STDERR")" >&2
-  rm -f "$WRANGLER_STDERR"
-  exit 1
-fi
-rm -f "$WRANGLER_STDERR"
-EXISTING=$(echo "$EXISTING_RAW" | jq -r '.[].queue_name') || { echo "Error: failed to parse queue list output" >&2; exit 1; }
-
+# Ensure each queue exists by attempting to create it.
+# wrangler queues create is idempotent-ish: it succeeds on new queues and
+# returns an error containing "already exists" for existing ones.
+# This avoids needing wrangler queues list (which lacks --json output).
 for QUEUE_NAME in $QUEUE_NAMES; do
-  if echo "$EXISTING" | grep -qx "$QUEUE_NAME"; then
+  echo "  ▶ Ensuring $QUEUE_NAME..."
+  CREATE_OUTPUT=$(npx wrangler queues create "$QUEUE_NAME" 2>&1) && {
+    echo "  ✓ $QUEUE_NAME (created)"
+    continue
+  }
+  if echo "$CREATE_OUTPUT" | grep -qi "already\|11009"; then
     echo "  ✓ $QUEUE_NAME (exists)"
   else
-    echo "  ▶ Creating $QUEUE_NAME..."
-    if npx wrangler queues create "$QUEUE_NAME"; then
-      echo "  ✓ $QUEUE_NAME (created)"
-    else
-      echo "Error: failed to create queue '$QUEUE_NAME'" >&2
-      exit 1
-    fi
+    echo "Error: failed to create queue '$QUEUE_NAME'" >&2
+    echo "$CREATE_OUTPUT" >&2
+    exit 1
   fi
 done
 
