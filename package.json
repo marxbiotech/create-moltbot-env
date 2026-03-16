@@ -1,6 +1,6 @@
 {
   "name": "@marxbiotech/create-moltbot-env",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Scaffold a moltbot-env GitOps repository for deploying OpenClaw on Cloudflare Workers",
   "type": "module",
   "bin": {
@@ -12,7 +12,7 @@
     "migrations"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/diff.ts --format esm",
+    "build": "tsup src/index.ts src/diff.ts src/node.ts --format esm",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -27,12 +27,14 @@
   "dependencies": {
     "chalk": "^5.4.1",
     "ejs": "^3.1.10",
-    "prompts": "^2.4.2"
+    "prompts": "^2.4.2",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/ejs": "^3.1.5",
     "@types/node": "^22.13.4",
     "@types/prompts": "^2.4.9",
+    "@types/ws": "^8.18.1",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3"
   }

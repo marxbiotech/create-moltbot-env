@@ -146,6 +146,7 @@ DEFAULT_MODEL="${DEFAULT_MODEL:-google/gemini-3-flash-preview}"
   echo "    \"CF_ACCESS_AUD\": \"${CF_ACCESS_AUD}\","
   echo "    \"R2_BUCKET_NAME\": \"${BUCKET_NAME}\","
   echo "    \"DEFAULT_MODEL\": \"${DEFAULT_MODEL}\","
+  echo "    \"NODE_BYPASS_ROUTE\": \"/node-$(openssl rand -hex 8)\","
   echo "    \"WORKER_URL\": \"https://${WORKER_DOMAIN}\","
   if [[ -n "${BEDROCK_DEFAULT_MODEL:-}" ]]; then
     echo "    \"BEDROCK_DEFAULT_MODEL\": \"${BEDROCK_DEFAULT_MODEL}\","

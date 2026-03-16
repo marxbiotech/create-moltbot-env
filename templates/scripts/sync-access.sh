@@ -69,10 +69,15 @@ WORKER_DOMAIN="${WORKER_NAME}.${WORKERS_SUBDOMAIN}.workers.dev"
 MAIN_APP_NAME="${WORKER_NAME} - Cloudflare Workers"
 
 # Bypass apps: name_suffix|path|secret_name
+# Node bypass route is read dynamically from overlay vars (per-environment random path).
+NODE_BYPASS_ROUTE=$($STRIP "$OVERLAY_DIR/wrangler.jsonc" | jq -r '.vars.NODE_BYPASS_ROUTE // empty')
 BYPASS_CONFIGS=(
   "telegram-webhook|/telegram/webhook|TELEGRAM_WEBHOOK_SECRET"
   "slack-events|/slack/events|SLACK_SIGNING_SECRET"
 )
+if [[ -n "$NODE_BYPASS_ROUTE" ]]; then
+  BYPASS_CONFIGS+=("node-bypass|${NODE_BYPASS_ROUTE}|MOLTBOT_GATEWAY_TOKEN")
+fi
 
 # --- Fetch current Access apps ---
 

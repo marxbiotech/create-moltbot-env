@@ -4,7 +4,7 @@ OVERLAY_DIR := $(CURDIR)
 ENV_NAME := $(notdir $(OVERLAY_DIR))
 STRIP_JSONC := node $(ROOT)/scripts/jsonc-strip.js
 
-.PHONY: deploy secret wrangler merged-config edit-secrets push-secrets sync-access ensure-queue
+.PHONY: deploy secret wrangler merged-config edit-secrets push-secrets sync-access ensure-queue node
 
 # Full deploy: clone app repo → npm ci → merge configs → wrangler deploy
 deploy:
@@ -34,6 +34,12 @@ sync-access:
 # Ensure Cloudflare Queues exist for overlay config
 ensure-queue:
 	@bash $(ROOT)/scripts/ensure-queue.sh $(ENV_NAME)
+
+# Start paired node: relay + openclaw node via create-moltbot-env CLI
+# Override node name: make node NODE_NAME=my-custom-name
+NODE_NAME ?= $(ENV_NAME)-$(shell hostname -s)
+node:
+	@npx @marxbiotech/create-moltbot-env node --env $(ENV_NAME) --node-name "$(NODE_NAME)"
 
 # Edit secrets via SOPS (requires SOPS_AGE_KEY env var)
 edit-secrets:

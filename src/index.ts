@@ -7,6 +7,7 @@ import prompts from "prompts";
 import chalk from "chalk";
 import ejs from "ejs";
 import { diff } from "./diff.js";
+import { node } from "./node.js";
 import { getCliVersion } from "./utils.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -45,6 +46,10 @@ async function main() {
   const subcommand = process.argv[2];
   if (subcommand === "diff") {
     await diff(process.argv.slice(3));
+    return;
+  }
+  if (subcommand === "node") {
+    await node(process.argv.slice(3));
     return;
   }
 
