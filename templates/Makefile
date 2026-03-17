@@ -40,8 +40,13 @@ ensure-queue:
 # Override node name: make node NODE_NAME=my-custom-name
 NODE_NAME ?= $(ENV_NAME)-$(shell hostname -s)
 node:
-	@CF_ACCESS_CLIENT_ID=$$(security find-generic-password -a "cf-node-service-token" -s "cf-node-client-id" -w 2>/dev/null) \
-	CF_ACCESS_CLIENT_SECRET=$$(security find-generic-password -a "cf-node-service-token" -s "cf-node-client-secret" -w 2>/dev/null) \
+	@set -e; \
+	CF_ACCESS_CLIENT_ID=$$(security find-generic-password -a "cf-node-service-token" -s "cf-node-client-id" -w 2>/dev/null); \
+	CF_ACCESS_CLIENT_SECRET=$$(security find-generic-password -a "cf-node-service-token" -s "cf-node-client-secret" -w 2>/dev/null); \
+	test -n "$$CF_ACCESS_CLIENT_ID" || { echo "Error: CF Access Client ID not found in Keychain (account=cf-node-service-token, service=cf-node-client-id)" >&2; exit 1; }; \
+	test -n "$$CF_ACCESS_CLIENT_SECRET" || { echo "Error: CF Access Client Secret not found in Keychain (account=cf-node-service-token, service=cf-node-client-secret)" >&2; exit 1; }; \
+	CF_ACCESS_CLIENT_ID="$$CF_ACCESS_CLIENT_ID" \
+	CF_ACCESS_CLIENT_SECRET="$$CF_ACCESS_CLIENT_SECRET" \
 	npx @marxbiotech/create-moltbot-env node --env $(ENV_NAME) --node-name "$(NODE_NAME)"
 
 # Edit secrets via SOPS (requires SOPS_AGE_KEY env var)

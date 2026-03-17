@@ -5,9 +5,9 @@ set -euo pipefail
 #
 # For each overlay, ensures:
 # 1. A main Access app exists (domain-level protection)
-# 2. Webhook bypass apps exist for configured channels:
-#    - /telegram/webhook if TELEGRAM_WEBHOOK_SECRET is in secrets
-#    - /slack/events if SLACK_SIGNING_SECRET is in secrets
+# 2. Per-route Access apps exist based on deployed secrets:
+#    - bypass apps for webhook routes (telegram, slack)
+#    - service_auth app for the node route (if NODE_ROUTE is configured)
 #
 # Usage: sync-access.sh <env-name>
 
@@ -64,13 +64,15 @@ fi
 unset CF_API_TOKEN CLOUDFLARE_API_TOKEN
 
 STRIP="node $SCRIPT_DIR/jsonc-strip.js"
-WORKER_NAME=$($STRIP "$OVERLAY_DIR/wrangler.jsonc" | jq -r '.name')
+OVERLAY_JSON=$($STRIP "$OVERLAY_DIR/wrangler.jsonc")
+WORKER_NAME=$(echo "$OVERLAY_JSON" | jq -r '.name')
 WORKER_DOMAIN="${WORKER_NAME}.${WORKERS_SUBDOMAIN}.workers.dev"
 MAIN_APP_NAME="${WORKER_NAME} - Cloudflare Workers"
 
 # Access apps: name_suffix|path|secret_name|policy_type
 # policy_type: "bypass" (default) or "service_auth"
-OVERLAY_JSON=$($STRIP "$OVERLAY_DIR/wrangler.jsonc")
+# Design Decision: NODE_SERVICE_TOKEN_ID is a script-global rather than a per-config field (5th pipe field).
+# Currently only one service_auth entry exists; if a second is added, refactor to embed token ID per entry.
 NODE_ROUTE=$(echo "$OVERLAY_JSON" | jq -r '.vars.NODE_ROUTE // empty')
 NODE_SERVICE_TOKEN_ID=$(echo "$OVERLAY_JSON" | jq -r '.vars.NODE_SERVICE_TOKEN_ID // empty')
 ACCESS_CONFIGS=(
@@ -103,7 +105,7 @@ fi
 MAIN_APP_ID=$(echo "$MAIN_APP" | jq -r '.id')
 echo "  Main app: $MAIN_APP_NAME (ID: $MAIN_APP_ID)"
 
-# --- Check wrangler secrets (once, shared across all bypass checks) ---
+# --- Check wrangler secrets (once, shared across all access checks) ---
 
 echo ""
 echo "▶ Checking wrangler secrets..."
@@ -125,6 +127,10 @@ fi
 for config in "${ACCESS_CONFIGS[@]}"; do
   IFS='|' read -r SUFFIX URL_PATH SECRET_NAME POLICY_TYPE <<< "$config"
   POLICY_TYPE="${POLICY_TYPE:-bypass}"
+  case "$POLICY_TYPE" in
+    bypass|service_auth) ;;
+    *) echo "Error: unknown policy_type '$POLICY_TYPE' in ACCESS_CONFIGS entry: $config" >&2; exit 1 ;;
+  esac
   APP_NAME="${WORKER_NAME}-${SUFFIX}"
   APP_DOMAIN="${WORKER_DOMAIN}${URL_PATH}"
 
@@ -169,7 +175,7 @@ for config in "${ACCESS_CONFIGS[@]}"; do
     NEW_ID=$(echo "$CREATE_RESPONSE" | jq -r '.result.id')
     echo "  Created (ID: $NEW_ID)"
 
-    # Create policy based on type
+    # Build policy payload based on type
     if [[ "$POLICY_TYPE" == "service_auth" ]]; then
       # Use specific token if NODE_SERVICE_TOKEN_ID is set, otherwise allow any valid service token
       if [[ -n "$NODE_SERVICE_TOKEN_ID" ]]; then
@@ -179,30 +185,28 @@ for config in "${ACCESS_CONFIGS[@]}"; do
         echo "▶ Creating policy: Allow Any Service Token"
         POLICY_DATA='{"name":"Allow Service Tokens","decision":"non_identity","include":[{"any_valid_service_token":{}}]}'
       fi
-      POLICY_RESPONSE=$(curl -s -X POST \
-        "$API_BASE/$NEW_ID/policies" \
-        -H "Authorization: Bearer $CF_ACCESS_API_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "$POLICY_DATA")
     else
       echo "▶ Creating policy: Bypass Everyone"
-      POLICY_RESPONSE=$(curl -s -X POST \
-        "$API_BASE/$NEW_ID/policies" \
-        -H "Authorization: Bearer $CF_ACCESS_API_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d '{
-          "name": "Bypass Everyone",
-          "decision": "bypass",
-          "include": [{"everyone": {}}]
-        }')
+      POLICY_DATA='{"name":"Bypass Everyone","decision":"bypass","include":[{"everyone":{}}]}'
     fi
 
-    # Design Decision: On policy failure, the just-created app is left orphaned (blocks route
-    # with Access but has no policy). Re-running will NOT fix this — it sees the app
-    # exists and skips it. Manual deletion from the CF dashboard is required before re-running.
+    POLICY_RESPONSE=$(curl -s -X POST \
+      "$API_BASE/$NEW_ID/policies" \
+      -H "Authorization: Bearer $CF_ACCESS_API_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$POLICY_DATA")
+
     if [[ "$(echo "$POLICY_RESPONSE" | jq -r '.success')" != "true" ]]; then
       echo "Error: Failed to create policy for $APP_NAME:" >&2
       echo "$POLICY_RESPONSE" | jq . >&2
+      echo "▶ Rolling back: deleting orphaned app $APP_NAME (ID: $NEW_ID)..." >&2
+      ROLLBACK=$(curl -s -X DELETE "$API_BASE/$NEW_ID" \
+        -H "Authorization: Bearer $CF_ACCESS_API_TOKEN")
+      if [[ "$(echo "$ROLLBACK" | jq -r '.success')" == "true" ]]; then
+        echo "  Rolled back successfully. Re-run to retry." >&2
+      else
+        echo "  ⚠ Rollback failed. Manually delete app $NEW_ID from CF dashboard before re-running." >&2
+      fi
       exit 1
     fi
 
