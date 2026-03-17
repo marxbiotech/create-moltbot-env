@@ -134,7 +134,10 @@ export async function node(argv: string[]): Promise<void> {
     process.exit(1);
   });
 
+  let signalReceived = false;
+
   child.on("exit", (code) => {
+    if (signalReceived) return; // shutdown handled by signal handler
     console.log(chalk.dim(`openclaw node exited (code: ${code})`));
     relay.shutdown();
     process.exit(code ?? 0);
@@ -142,13 +145,15 @@ export async function node(argv: string[]): Promise<void> {
 
   // 10. Graceful shutdown on SIGINT/SIGTERM
   function handleSignal(signal: string) {
+    if (signalReceived) return;
+    signalReceived = true;
     console.log(chalk.dim(`\nReceived ${signal}, shutting down...`));
     child.kill("SIGTERM");
     relay.shutdown();
-    // Give child time to exit gracefully
+    // Give child time to exit gracefully, then force kill
     setTimeout(() => {
       child.kill("SIGKILL");
-      process.exit(0);
+      process.exit(1);
     }, 5000);
   }
 

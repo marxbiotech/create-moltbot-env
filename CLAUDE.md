@@ -4,23 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`@marxbiotech/create-moltbot-env` is a scaffold CLI (`npx @marxbiotech/create-moltbot-env`) that generates a moltbot-env GitOps repository for deploying [moltbot-app](https://github.com/marxbiotech/moltbot-app) on Cloudflare Workers. It also provides an agent-native upgrade mechanism via the `diff` subcommand.
+`@marxbiotech/create-moltbot-env` is a scaffold CLI (`npx @marxbiotech/create-moltbot-env`) that generates a moltbot-env GitOps repository for deploying [moltbot-app](https://github.com/marxbiotech/moltbot-app) on Cloudflare Workers. It also provides an agent-native upgrade mechanism via the `diff` subcommand and a `node` subcommand that starts a WebSocket relay + openclaw node for ACP connections.
 
 ## Commands
 
 ```bash
-npm run build          # tsup → dist/ (ESM, two entry points: index.ts + diff.ts)
+npm run build          # tsup → dist/ (ESM, three entry points: index.ts + diff.ts + node.ts)
 node dist/index.js     # Run scaffold interactively (local test)
 node dist/index.js diff # Run diff subcommand (must be in a moltbot-env repo)
+node dist/index.js node --env <name> # Start ws-relay + openclaw node (must be in a moltbot-env repo)
 npm publish --access public  # Publish to npm
 ```
 
 ## Architecture
 
-### Two CLI modes
+### Three CLI modes
 
 1. **Scaffold** (`npx @marxbiotech/create-moltbot-env`) — `src/index.ts`: interactive prompts → collect template variables + AGE key → render EJS templates → copy static files → `chmod +x` shell scripts → `git init` + initial commit.
 2. **Diff** (`npx @marxbiotech/create-moltbot-env diff`) — `src/diff.ts`: reads version metadata from `.moltbot-env.json` (or legacy `.moltbot-env-meta.json` for v0.1.x repos) → compares version against CLI's `package.json` version → builds migration chain from `migrations/*.md` → outputs markdown instructions to stdout. Supports `--json` flag. Exit 0 = migrations found, exit 1 = up-to-date or no path.
+3. **Node** (`npx @marxbiotech/create-moltbot-env node --env <name>`) — `src/node.ts` + `src/ws-relay.ts` + `src/config-reader.ts`: reads moltbot-env config → loads SOPS_AGE_KEY from Keychain → decrypts MOLTBOT_GATEWAY_TOKEN → starts a local WebSocket relay (with exponential backoff reconnect + heartbeat) → spawns `openclaw node run` pointed at the relay. CF Access Service Token is passed via env vars (typically from the Makefile `node` target). The relay uses lazy connection (connects to remote only when local client arrives) to avoid gateway timeout on idle WebSocket.
 
 ### Template rendering
 

@@ -31,7 +31,14 @@ load_credential() {
   if [[ "$source" == "keychain" ]] && command -v security &>/dev/null; then
     local account=$(jq -r --arg k "$key" '.credentials[$k].keychainAccount' "$config")
     local service=$(jq -r --arg k "$key" '.credentials[$k].keychainService' "$config")
-    security find-generic-password -a "$account" -s "$service" -w 2>/dev/null || true
+    local value
+    if value=$(security find-generic-password -a "$account" -s "$service" -w 2>&1); then
+      echo "$value"
+    else
+      echo "Warning: Keychain lookup failed for $key (account=$account, service=$service)" >&2
+    fi
+  elif [[ "$source" != "null" && -n "$source" ]]; then
+    echo "Warning: unsupported credential source '$source' for $key" >&2
   fi
 }
 

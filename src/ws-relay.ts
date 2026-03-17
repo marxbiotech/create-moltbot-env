@@ -32,6 +32,7 @@ interface RelayState {
 
 const MAX_BACKOFF_MS = 30_000;
 const BASE_BACKOFF_MS = 1_000;
+const MAX_PENDING_MESSAGES = 1000;
 
 function log(msg: string) {
   const ts = new Date().toISOString().slice(11, 23);
@@ -67,7 +68,10 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
     maxReconnects = Infinity,
   } = opts;
 
-  const remoteWithToken = `${remoteUrl}?token=${token}`;
+  const authHeaders: Record<string, string> = {
+    ...remoteHeaders,
+    "Authorization": `Bearer ${token}`,
+  };
 
   const state: RelayState = {
     wss: new WebSocketServer({ port: localPort, host: localHost }),
@@ -82,6 +86,15 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
 
   log(`listening on ${localHost}:${localPort}`);
   log(`remote: ${remoteUrl}`);
+
+  state.wss.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      logError(`port ${localPort} already in use — is another relay running?`);
+    } else {
+      logError(`server error: ${err.message}`);
+    }
+    process.exit(1);
+  });
 
   function clearHeartbeat() {
     if (state.heartbeatTimer) {
@@ -110,7 +123,7 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
     if (state.shuttingDown) return;
 
     log("connecting to remote...");
-    const remote = new WebSocket(remoteWithToken, { headers: remoteHeaders });
+    const remote = new WebSocket(remoteUrl, { headers: authHeaders });
     state.remote = remote;
 
     remote.on("open", () => {
@@ -122,7 +135,13 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
       if (state.pendingMessages.length > 0) {
         log(`flushing ${state.pendingMessages.length} buffered message(s)`);
         for (const msg of state.pendingMessages) {
-          remote.send(msg.data, { binary: msg.isBinary });
+          if (remote.readyState !== WebSocket.OPEN) {
+            logError(`remote closed during flush — remaining messages lost`);
+            break;
+          }
+          remote.send(msg.data, { binary: msg.isBinary }, (err) => {
+            if (err) logError(`flush send error: ${err.message}`);
+          });
         }
         state.pendingMessages = [];
       }
@@ -155,7 +174,8 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
   function scheduleReconnect() {
     if (state.shuttingDown) return;
     if (state.reconnectAttempt >= maxReconnects) {
-      logError(`max reconnect attempts (${maxReconnects}) reached, giving up`);
+      logError(`max reconnect attempts (${maxReconnects}) reached — shutting down`);
+      shutdown();
       return;
     }
 
@@ -178,7 +198,9 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
         : String(data).slice(0, 200);
       log(`local→remote: ${preview}`);
       if (remote.readyState === WebSocket.OPEN) {
-        remote.send(data, { binary: isBinary });
+        remote.send(data, { binary: isBinary }, (err) => {
+          if (err) logError(`send to remote failed: ${err.message}`);
+        });
       }
     });
 
@@ -188,7 +210,9 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
         : String(data).slice(0, 200);
       log(`remote→local: ${preview}`);
       if (local.readyState === WebSocket.OPEN) {
-        local.send(data, { binary: isBinary });
+        local.send(data, { binary: isBinary }, (err) => {
+          if (err) logError(`send to local failed: ${err.message}`);
+        });
       }
     });
   }
@@ -228,6 +252,10 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
           ? `[binary ${Buffer.isBuffer(data) ? data.length : "?"}B]`
           : String(data).slice(0, 200);
         log(`local→buffer: ${preview}`);
+        if (state.pendingMessages.length >= MAX_PENDING_MESSAGES) {
+          logError(`buffer full (${MAX_PENDING_MESSAGES} messages) — dropping oldest`);
+          state.pendingMessages.shift();
+        }
         state.pendingMessages.push({ data, isBinary });
       });
 

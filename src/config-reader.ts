@@ -54,7 +54,11 @@ export function findEnvRoot(startDir: string): string {
 export function readConfig(root: string): MoltbotEnvConfig {
   const configPath = path.join(root, ".moltbot-env.json");
   const raw = fs.readFileSync(configPath, "utf8");
-  return JSON.parse(raw) as MoltbotEnvConfig;
+  try {
+    return JSON.parse(raw) as MoltbotEnvConfig;
+  } catch (err) {
+    throw new Error(`Invalid JSON in ${configPath}: ${err instanceof Error ? err.message : err}`);
+  }
 }
 
 /**
@@ -86,7 +90,12 @@ export function readOverlayVars(root: string, envName: string): OverlayVars {
     throw new Error(`Overlay not found: overlays/${envName}/wrangler.jsonc`);
   }
   const raw = fs.readFileSync(wranglerPath, "utf8");
-  const config = parseJsonc(raw);
+  let config: Record<string, unknown>;
+  try {
+    config = parseJsonc(raw);
+  } catch (err) {
+    throw new Error(`Failed to parse ${wranglerPath}: ${err instanceof Error ? err.message : err}`);
+  }
   const vars = config.vars as Record<string, string> | undefined;
   if (!vars) {
     throw new Error(`No vars block in overlays/${envName}/wrangler.jsonc`);
@@ -117,9 +126,9 @@ export function loadKeychainCredential(cred: CredentialSource): string {
       ],
       { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }
     ).trim();
-  } catch {
+  } catch (err) {
     throw new Error(
-      `Failed to load from Keychain: account=${cred.keychainAccount}, service=${cred.keychainService}`
+      `Failed to load from Keychain: account=${cred.keychainAccount}, service=${cred.keychainService}: ${err instanceof Error ? err.message : err}`
     );
   }
 }
