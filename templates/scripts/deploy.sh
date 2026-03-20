@@ -100,6 +100,25 @@ git checkout "$VERSION"
 RESOLVED_SHA=$(git rev-parse --short HEAD)
 echo "  Resolved: ${VERSION} → ${RESOLVED_SHA}"
 
+# 1b. Install env-managed skills into app repo before build
+SKILLS_FILE="$OVERLAY_DIR/skills.txt"
+if [[ -f "$SKILLS_FILE" ]]; then
+  skill_count=0
+  while IFS= read -r skill_name || [[ -n "$skill_name" ]]; do
+    skill_name="${skill_name%%#*}"          # strip inline comments
+    skill_name="$(echo "$skill_name" | xargs)" # trim whitespace
+    [[ -z "$skill_name" ]] && continue
+    skill_src="$ROOT_DIR/skills/$skill_name"
+    if [[ ! -d "$skill_src" ]]; then
+      echo "Error: skill '$skill_name' not found in skills/" >&2; exit 1
+    fi
+    mkdir -p "$WORK_DIR/skills/$skill_name"
+    cp -r "$skill_src"/* "$WORK_DIR/skills/$skill_name/"
+    ((skill_count++))
+  done < "$SKILLS_FILE"
+  [[ $skill_count -gt 0 ]] && echo "  Skills injected: $skill_count"
+fi
+
 # 2. Install dependencies
 npm ci
 
@@ -118,7 +137,9 @@ if [[ -f "$OVERLAY_DIR/secrets.json" ]]; then
   echo "▶ Deploying secrets..."
   secrets=$(mktemp)
   trap 'rm -rf "$WORK_DIR" "$secrets"' EXIT
-  sops decrypt "$OVERLAY_DIR/secrets.json" > "$secrets"
+  sops decrypt "$OVERLAY_DIR/secrets.json" \
+    | jq 'to_entries | map(if .value | type != "string" then .value = (.value | tojson) else . end) | from_entries' \
+    > "$secrets"
   npx wrangler secret bulk "$secrets"
   rm -f "$secrets"
 fi
