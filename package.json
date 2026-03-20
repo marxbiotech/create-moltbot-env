@@ -1,6 +1,6 @@
 {
   "name": "@marxbiotech/create-moltbot-env",
-  "version": "0.5.0-alpha.3",
+  "version": "0.5.0-alpha.4",
   "description": "Scaffold a moltbot-env GitOps repository for deploying OpenClaw on Cloudflare Workers",
   "type": "module",
   "bin": {

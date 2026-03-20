@@ -33,6 +33,12 @@ interface RelayState {
 const MAX_BACKOFF_MS = 30_000;
 const BASE_BACKOFF_MS = 1_000;
 const MAX_PENDING_MESSAGES = 1000;
+const PREVIEW_LENGTH = 200;
+
+/** When RELAY_DEBUG=1 (or =full), log full message content instead of truncated previews. */
+const DEBUG_FULL = ["1", "true", "full"].includes(
+  (process.env.RELAY_DEBUG ?? "").toLowerCase(),
+);
 
 function log(msg: string) {
   const ts = new Date().toISOString().slice(11, 23);
@@ -42,6 +48,15 @@ function log(msg: string) {
 function logError(msg: string) {
   const ts = new Date().toISOString().slice(11, 23);
   console.error(`[${ts}] relay: ${msg}`);
+}
+
+function previewText(data: RawData, isBinary: boolean): string {
+  if (isBinary) {
+    return `[binary ${Buffer.isBuffer(data) ? data.length : "?"}B]`;
+  }
+  const text = String(data);
+  if (DEBUG_FULL) return text;
+  return text.slice(0, PREVIEW_LENGTH);
 }
 
 /**
@@ -193,10 +208,7 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
     remote.removeAllListeners("message");
 
     local.on("message", (data, isBinary) => {
-      const preview = isBinary
-        ? `[binary ${Buffer.isBuffer(data) ? data.length : "?"}B]`
-        : String(data).slice(0, 200);
-      log(`local→remote: ${preview}`);
+      log(`local→remote: ${previewText(data, isBinary)}`);
       if (remote.readyState === WebSocket.OPEN) {
         remote.send(data, { binary: isBinary }, (err) => {
           if (err) logError(`send to remote failed: ${err.message}`);
@@ -205,10 +217,7 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
     });
 
     remote.on("message", (data, isBinary) => {
-      const preview = isBinary
-        ? `[binary ${Buffer.isBuffer(data) ? data.length : "?"}B]`
-        : String(data).slice(0, 200);
-      log(`remote→local: ${preview}`);
+      log(`remote→local: ${previewText(data, isBinary)}`);
       if (local.readyState === WebSocket.OPEN) {
         local.send(data, { binary: isBinary }, (err) => {
           if (err) logError(`send to local failed: ${err.message}`);
@@ -248,10 +257,7 @@ export function startRelay(opts: RelayOptions): { shutdown: () => void } {
     } else {
       // Buffer local messages until remote is ready
       local.on("message", (data, isBinary) => {
-        const preview = isBinary
-          ? `[binary ${Buffer.isBuffer(data) ? data.length : "?"}B]`
-          : String(data).slice(0, 200);
-        log(`local→buffer: ${preview}`);
+        log(`local→buffer: ${previewText(data, isBinary)}`);
         if (state.pendingMessages.length >= MAX_PENDING_MESSAGES) {
           logError(`buffer full (${MAX_PENDING_MESSAGES} messages) — dropping oldest`);
           state.pendingMessages.shift();
